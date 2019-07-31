@@ -25,7 +25,14 @@ namespace PuppeteerSharp.Tests.PuppeteerTests
         [Fact]
         public async Task ShouldWork()
         {
-            var response = await Page.GoToAsync(TestConstants.HttpsPrefix + "/empty.html");
+            var requestTask = Server.WaitForRequest("/empty.html", request => request);
+            var responseTask = Page.GoToAsync(TestConstants.HttpsPrefix + "/empty.html");
+
+            await Task.WhenAll(
+                requestTask,
+                responseTask);
+
+            var response = responseTask.Result;
             Assert.Equal(HttpStatusCode.OK, response.Status);
             Assert.NotNull(response.SecurityDetails);
             Assert.Equal("TLS 1.2", response.SecurityDetails.Protocol);

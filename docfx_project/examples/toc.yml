@@ -12,5 +12,8 @@
       href: ReuseChrome.md
 - name: Advanced
   items:
+    - name: Running Puppeteer-Sharp on Docker
+      href: Docker.md 
+  items:
     - name: How to log CDP communication
       href: LogCDP.md 
