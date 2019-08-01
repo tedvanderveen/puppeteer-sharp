@@ -6,7 +6,10 @@ using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using PuppeteerSharp.Helpers;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,7 +28,7 @@ namespace PuppeteerSharp.Tests.PuppeteerTests
         [Fact]
         public async Task ShouldWork()
         {
-            var requestTask = Server.WaitForRequest("/empty.html", request => request);
+            var requestTask = HttpsServer.WaitForRequest("/empty.html", request => request.HttpContext.Features.Get<ITlsHandshakeFeature>().Protocol);
             var responseTask = Page.GoToAsync(TestConstants.HttpsPrefix + "/empty.html");
 
             await Task.WhenAll(
@@ -35,7 +38,7 @@ namespace PuppeteerSharp.Tests.PuppeteerTests
             var response = responseTask.Result;
             Assert.Equal(HttpStatusCode.OK, response.Status);
             Assert.NotNull(response.SecurityDetails);
-            Assert.Equal("TLS 1.2", response.SecurityDetails.Protocol);
+            Assert.Equal(CurateProtocol(requestTask.Result.ToString()), CurateProtocol(response.SecurityDetails.Protocol));
         }
 
         [Fact]
@@ -46,11 +49,18 @@ namespace PuppeteerSharp.Tests.PuppeteerTests
 
             Page.Response += (sender, e) => responses.Add(e.Response);
 
-            await Page.GoToAsync(TestConstants.HttpsPrefix + "/plzredirect");
+            var requestTask = HttpsServer.WaitForRequest("/empty.html", request => request.HttpContext.Features.Get<ITlsHandshakeFeature>().Protocol);
+            var responseTask = Page.GoToAsync(TestConstants.HttpsPrefix + "/plzredirect");
+
+            await Task.WhenAll(
+                requestTask,
+                responseTask);
+
+            var response = responseTask.Result;
 
             Assert.Equal(2, responses.Count);
             Assert.Equal(HttpStatusCode.Found, responses[0].Status);
-            Assert.Equal("TLS 1.2", responses[0].SecurityDetails.Protocol);
+            Assert.Equal(CurateProtocol(requestTask.Result.ToString()), CurateProtocol(response.SecurityDetails.Protocol));
         }
 
         [Fact]
@@ -79,5 +89,8 @@ namespace PuppeteerSharp.Tests.PuppeteerTests
             Assert.Equal(3, await Page.MainFrame.EvaluateExpressionAsync<int>("1 + 2"));
             Assert.Equal(5, await Page.FirstChildFrame().EvaluateExpressionAsync<int>("2 + 3"));
         }
+
+        private string CurateProtocol(string protocol) => protocol.ToLower().Replace(" ", string.Empty).Replace(".", string.Empty);
+
     }
 }
