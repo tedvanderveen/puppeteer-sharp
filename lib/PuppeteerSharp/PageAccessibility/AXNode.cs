@@ -3,7 +3,9 @@ using System.Linq;
 using System.Collections.Generic;
 using PuppeteerSharp.Messaging;
 using Newtonsoft.Json.Linq;
+#if NETSTANDARD2_0
 using PuppeteerSharp.Helpers;
+#endif
 
 namespace PuppeteerSharp.PageAccessibility
 {
